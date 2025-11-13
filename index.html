@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chronic Kidney Disease Prediction</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #0f172a;            /* slate-900 */
+            --bg-soft: #111827;       /* gray-900 */
+            --card: #111827;          /* gray-900 */
+            --muted: #94a3b8;         /* slate-400 */
+            --text: #e5e7eb;          /* gray-200 */
+            --primary: #6366f1;       /* indigo-500 */
+            --primary-2: #8b5cf6;     /* violet-500 */
+            --positive: #22c55e;
+            --negative: #ef4444;
+            --ring: rgba(99, 102, 241, 0.35);
+        }
+        body {
+            font-family: 'Inter', system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, 'Helvetica Neue', Arial, "Apple Color Emoji", "Segoe UI Emoji";
+            background: radial-gradient(1200px 600px at 10% 5%, rgba(99,102,241,0.18), transparent 40%),
+                        radial-gradient(800px 600px at 90% 10%, rgba(139,92,246,0.15), transparent 40%),
+                        var(--bg);
+            min-height: 100vh;
+            color: var(--text);
+            padding: 24px;
+        }
+        .container {
+            max-width: 980px;
+            margin: 0 auto;
+        }
+        .shell {
+            background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 18px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.06);
+            overflow: hidden;
+        }
+        .topbar {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 18px 22px; background: rgba(17,24,39,0.7); backdrop-filter: blur(8px);
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+        .brand { display: flex; align-items: center; gap: 12px; }
+        .logo {
+            width: 36px; height: 36px; border-radius: 10px;
+            background: linear-gradient(135deg, var(--primary), var(--primary-2));
+            box-shadow: 0 8px 18px var(--ring);
+        }
+        .title { font-weight: 700; letter-spacing: 0.2px; }
+        .subtitle { color: var(--muted); font-size: 14px; }
+        .actions { display: flex; align-items: center; gap: 10px; }
+        .chip { padding: 6px 10px; border-radius: 999px; font-size: 12px; color: var(--muted); border: 1px solid rgba(255,255,255,0.08); }
+        .theme-toggle { background: transparent; border: 1px solid rgba(255,255,255,0.12); color: var(--text); padding: 8px 12px; border-radius: 10px; cursor: pointer; }
+
+        .content { display: grid; grid-template-columns: 1.25fr 0.75fr; gap: 24px; padding: 22px; }
+        .card {
+            background: linear-gradient(180deg, rgba(17,24,39,0.9), rgba(17,24,39,0.75));
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 16px;
+            padding: 20px;
+        }
+        .card h2 { font-size: 16px; margin-bottom: 14px; color: #c7d2fe; font-weight: 600; letter-spacing: 0.3px; }
+        .section { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+        .form-group { display: flex; flex-direction: column; gap: 6px; }
+        label { font-weight: 600; color: var(--text); font-size: 13px; }
+        input, select {
+            width: 100%; background: #0b1220; color: var(--text);
+            padding: 12px 14px; border: 1px solid rgba(255,255,255,0.07); border-radius: 12px; font-size: 15px;
+            outline: none; transition: box-shadow 0.2s, border-color 0.2s;
+        }
+        input:focus, select:focus { box-shadow: 0 0 0 6px var(--ring); border-color: var(--primary); }
+
+        .submit-btn { width: 100%; margin-top: 10px; padding: 14px 16px; border-radius: 12px; border: none; cursor: pointer; font-weight: 700; font-size: 16px; color: white;
+            background: linear-gradient(135deg, var(--primary), var(--primary-2)); box-shadow: 0 8px 22px var(--ring); }
+        .submit-btn:hover { filter: brightness(1.05); }
+
+        .hint { color: var(--muted); font-size: 12px; }
+        .legend { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 8px; margin-top: 6px; }
+        .legend .chip { text-align: center; }
+
+        .loading { display: none; text-align: center; margin-top: 12px; color: var(--muted); }
+        .spinner { border: 3px solid rgba(255,255,255,0.15); border-top: 3px solid var(--primary); border-radius: 50%; width: 28px; height: 28px; animation: spin 1s linear infinite; margin: 0 auto 10px; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .result { display: none; }
+        .result .stat { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; margin-bottom: 6px; }
+        .badge { padding: 6px 10px; border-radius: 999px; font-weight: 700; font-size: 12px; }
+        .badge.positive { background: rgba(34,197,94,0.18); color: #86efac; border: 1px solid rgba(34,197,94,0.35); }
+        .badge.negative { background: rgba(239,68,68,0.18); color: #fca5a5; border: 1px solid rgba(239,68,68,0.35); }
+        .progress { height: 10px; background: rgba(255,255,255,0.08); border-radius: 999px; overflow: hidden; }
+        .bar { height: 100%; width: 0%; background: linear-gradient(90deg, var(--primary), var(--primary-2)); transition: width 0.5s ease; }
+        .recommendation { margin-top: 10px; padding: 12px; border-radius: 12px; border: 1px dashed rgba(255,255,255,0.12); background: rgba(255,255,255,0.03); }
+
+        .explainability { margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.08); }
+        .explainability h3 { font-size: 14px; margin-bottom: 12px; color: #c7d2fe; font-weight: 600; }
+        .explainability p { font-size: 12px; color: var(--muted); margin-bottom: 12px; }
+        .feature-list { display: flex; flex-direction: column; gap: 8px; max-height: 400px; overflow-y: auto; }
+        .feature-item { display: flex; align-items: center; gap: 10px; padding: 10px; background: rgba(255,255,255,0.03); border-radius: 10px; border: 1px solid rgba(255,255,255,0.05); }
+        .feature-name { flex: 1; font-weight: 600; font-size: 13px; color: var(--text); }
+        .feature-value { font-size: 12px; color: var(--muted); min-width: 60px; text-align: right; }
+        .feature-contribution { display: flex; align-items: center; gap: 8px; min-width: 120px; }
+        .contribution-bar { flex: 1; height: 6px; background: rgba(255,255,255,0.1); border-radius: 3px; overflow: hidden; position: relative; }
+        .contribution-fill { height: 100%; transition: width 0.3s ease; border-radius: 3px; }
+        .contribution-fill.positive { background: linear-gradient(90deg, #22c55e, #16a34a); }
+        .contribution-fill.negative { background: linear-gradient(90deg, #ef4444, #dc2626); }
+        .contribution-value { font-size: 11px; font-weight: 600; min-width: 50px; text-align: right; }
+        .contribution-value.positive { color: #86efac; }
+        .contribution-value.negative { color: #fca5a5; }
+        .contribution-label { font-size: 10px; color: var(--muted); margin-top: 4px; }
+        .contribution-label.positive::before { content: "↑ Increases CKD risk"; }
+        .contribution-label.negative::before { content: "↓ Decreases CKD risk"; }
+
+        footer { padding: 14px 22px; border-top: 1px solid rgba(255,255,255,0.06); color: var(--muted); font-size: 12px; display: flex; justify-content: space-between; align-items: center; }
+
+        @media (max-width: 980px) {
+            .content { grid-template-columns: 1fr; }
+        }
+    </style>
+    <meta name="color-scheme" content="dark light">
+    <script>
+        function toggleTheme(){
+            const root = document.documentElement;
+            const curr = root.getAttribute('data-theme');
+            if(curr === 'light') { root.removeAttribute('data-theme'); return; }
+            root.setAttribute('data-theme','light');
+        }
+    </script>
+    <style>
+        /* Light theme overrides */
+        [data-theme="light"] { --bg: #f3f4f6; --bg-soft: #ffffff; --card: #ffffff; --text: #0f172a; --muted: #475569; }
+        [data-theme="light"] body { color: var(--text); }
+        [data-theme="light"] .shell { background: #ffffff; box-shadow: 0 10px 25px rgba(2,6,23,0.08); }
+        [data-theme="light"] input, [data-theme="light"] select { background: #ffffff; color: #0f172a; border-color: rgba(2,6,23,0.12); }
+        [data-theme="light"] .card { background: #ffffff; border-color: rgba(2,6,23,0.08); }
+        [data-theme="light"] .recommendation { background: #f8fafc; border-color: #e2e8f0; }
+        [data-theme="light"] .topbar { background: #ffffff; }
+        [data-theme="light"] .chip { border-color: #e5e7eb; color: #475569; }
+        [data-theme="light"] .feature-item { background: #f8fafc; border-color: #e2e8f0; }
+        [data-theme="light"] .explainability { border-top-color: #e2e8f0; }
+    </style>
+    <script>
+        // Preserve light mode between refreshes
+        (function(){
+            const pref = localStorage.getItem('theme');
+            if(pref === 'light') document.documentElement.setAttribute('data-theme','light');
+            window.addEventListener('DOMContentLoaded', function(){
+                const btn = document.getElementById('themeToggle');
+                if(btn){ btn.addEventListener('click', function(){
+                    const nowLight = document.documentElement.getAttribute('data-theme') === 'light';
+                    if(nowLight){ document.documentElement.removeAttribute('data-theme'); localStorage.removeItem('theme'); }
+                    else { document.documentElement.setAttribute('data-theme','light'); localStorage.setItem('theme','light'); }
+                }); }
+            });
+        })();
+    </script>
+</head>
+<body>
+    <div class="container">
+        <div class="shell">
+            <div class="topbar">
+                <div class="brand">
+                    <div class="logo"></div>
+                    <div>
+                        <div class="title">Chronic Kidney Disease Prediction</div>
+                        <div class="subtitle">AI-powered CKD detection</div>
+                    </div>
+                </div>
+                <div class="actions">
+                    <span class="chip">Beta</span>
+                    <button id="themeToggle" class="theme-toggle" title="Toggle theme">☀️/🌙</button>
+                </div>
+            </div>
+
+            <div class="content">
+                <div class="card">
+                    <h2>Patient Parameters</h2>
+                    <form id="predictionForm">
+                        <div class="section">
+                            <div class="form-group">
+                                <label for="age">Age (years)</label>
+                                <input type="number" id="age" name="age" step="0.1" required min="0" max="120">
+                            </div>
+                            <div class="form-group">
+                                <label for="bp">Blood Pressure (mm/Hg)</label>
+                                <input type="number" id="bp" name="bp" step="0.1" required min="0" max="300">
+                                <div class="hint">Typical range: 120/80 </div>
+                            </div>
+                        </div>
+
+                        <div class="section">
+                            <div class="form-group">
+                                <label for="sg">Specific Gravity</label>
+                                <input type="number" id="sg" name="sg" step="0.001" required min="1.005" max="1.025">
+                                <div class="hint">Typical range: 1.005–1.030</div>
+                            </div>
+                            <div class="form-group">
+                                <label for="al">Albumin Level (0-5)</label>
+                                <select id="al" name="al" required>
+                                    <option value="">Select level</option>
+                                    <option value="0">0</option>
+                                    <option value="1">1</option>
+                                    <option value="2">2</option>
+                                    <option value="3">3</option>
+                                    <option value="4">4</option>
+                                    <option value="5">5</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="section">
+                            <div class="form-group">
+                                <label for="su">Sugar Level (0-5)</label>
+                                <select id="su" name="su" required>
+                                    <option value="">Select level</option>
+                                    <option value="0">0</option>
+                                    <option value="1">1</option>
+                                    <option value="2">2</option>
+                                    <option value="3">3</option>
+                                    <option value="4">4</option>
+                                    <option value="5">5</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="bgr">Blood Glucose Random (mg/dl)</label>
+                                <input type="number" id="bgr" name="bgr" step="0.1" required min="0" max="1000">
+                                <div class="hint">Typical range: 80-140 </div>
+                            </div>
+                        </div>
+
+                        <div class="section">
+                            <div class="form-group">
+                                <label for="bu">Blood Urea (mg/dl)</label>
+                                <input type="number" id="bu" name="bu" step="0.1" required min="0" max="500">
+                                <div class="hint">Typical range: 7-20 </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="sc">Serum Creatinine (mg/dl)</label>
+                                <input type="number" id="sc" name="sc" step="0.01" required min="0" max="50">
+                                <div class="hint">Typical range: 0.6-1.1 </div>
+                            </div>
+                        </div>
+
+                        <div class="section">
+                            <div class="form-group">
+                                <label for="sod">Sodium (mEq/L)</label>
+                                <input type="number" id="sod" name="sod" step="0.1" required min="0" max="200">
+                                <div class="hint">Typical range: 136-145 </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="pot">Potassium (mEq/L)</label>
+                                <input type="number" id="pot" name="pot" step="0.1" required min="0" max="20">
+                                <div class="hint">Typical range: 3.5-5.1 </div>
+                            </div>
+                        </div>
+
+                        <div class="section">
+                            <div class="form-group">
+                                <label for="hemo">Hemoglobin (gms)</label>
+                                <input type="number" id="hemo" name="hemo" step="0.1" required min="0" max="30">
+                                <div class="hint">Typical range: 12-15 </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="pcv">Packed Cell Volume (%)</label>
+                                <input type="number" id="pcv" name="pcv" step="0.1" required min="0" max="100">
+                                <div class="hint">Typical range: 36-46 </div>
+                            </div>
+                        </div>
+
+                        <div class="section">
+                            <div class="form-group">
+                                <label for="rc">Red Blood Cell Count (millions/cmm)</label>
+                                <input type="number" id="rc" name="rc" step="0.1" required min="0" max="10">
+                                <div class="hint">Typical range: 4.7-6.1 </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="rbc">Red Blood Cells</label>
+                                <select id="rbc" name="rbc" required>
+                                    <option value="">Select</option>
+                                    <option value="0">Normal</option>
+                                    <option value="1">Abnormal</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="section">
+                            <div class="form-group">
+                                <label for="wc">White Blood Cell Count (cells/cumm)</label>
+                                <input type="number" id="wc" name="wc" step="100" required min="0" max="50000">
+                                <div class="hint">Typical range: 4000-11000 </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="pc">Pus Cell</label>
+                                <select id="pc" name="pc" required>
+                                    <option value="">Select</option>
+                                    <option value="0">Normal</option>
+                                    <option value="1">Abnormal</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="section">
+                            <div class="form-group">
+                                <label for="pcc">Pus Cell Clumps</label>
+                                <select id="pcc" name="pcc" required>
+                                    <option value="">Select</option>
+                                    <option value="0">Not Present</option>
+                                    <option value="1">Present</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="ba">Bacteria</label>
+                                <select id="ba" name="ba" required>
+                                    <option value="">Select</option>
+                                    <option value="0">Not Present</option>
+                                    <option value="1">Present</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="section">
+                            <div class="form-group">
+                                <label for="htn">Hypertension</label>
+                                <select id="htn" name="htn" required>
+                                    <option value="">Select</option>
+                                    <option value="0">No</option>
+                                    <option value="1">Yes</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="dm">Diabetes Mellitus</label>
+                                <select id="dm" name="dm" required>
+                                    <option value="">Select</option>
+                                    <option value="0">No</option>
+                                    <option value="1">Yes</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="section">
+                            <div class="form-group">
+                                <label for="cad">Coronary Artery Disease</label>
+                                <select id="cad" name="cad" required>
+                                    <option value="">Select</option>
+                                    <option value="0">No</option>
+                                    <option value="1">Yes</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="pe">Pedal Edema</label>
+                                <select id="pe" name="pe" required>
+                                    <option value="">Select</option>
+                                    <option value="0">No</option>
+                                    <option value="1">Yes</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="section">
+                            <div class="form-group">
+                                <label for="appet">Appetite</label>
+                                <select id="appet" name="appet" required>
+                                    <option value="">Select</option>
+                                    <option value="0">Poor</option>
+                                    <option value="1">Good</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="ane">Anemia</label>
+                                <select id="ane" name="ane" required>
+                                    <option value="">Select</option>
+                                    <option value="0">No</option>
+                                    <option value="1">Yes</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="submit-btn">🔍 Get Prediction</button>
+
+                        <div class="loading" id="loading">
+                            <div class="spinner"></div>
+                            <div>Analyzing patient data…</div>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="card">
+                    <h2>Result</h2>
+                    <div id="resultContainer" class="result">
+                        <div class="stat">
+                            <div id="resultTitle">—</div>
+                            <span id="resultBadge" class="badge">—</span>
+                        </div>
+                        <div class="stat">
+                            <div>Confidence</div>
+                            <div id="confidence">—</div>
+                        </div>
+                        <div class="progress"><div id="confidenceBar" class="bar"></div></div>
+                        <div class="recommendation" id="recommendation"></div>
+
+                        <div class="explainability" id="explainability" style="display: none;">
+                            <h3>📊 Prediction Explanation</h3>
+                            <p>Below are the parameters that influenced this prediction, ranked by their impact. Positive values increase CKD risk, negative values decrease it.</p>
+                            <div class="feature-list" id="featureList"></div>
+                        </div>
+
+                        <div class="legend">
+                            <span class="chip">0: No / Not Present / Normal</span>
+                            <span class="chip">1: Yes / Present / Abnormal</span>
+                            <span class="chip">Ranges shown in inputs</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <footer>
+                <span>Not medical advice. Consult a clinician for diagnosis.</span>
+                <span>v1.0</span>
+            </footer>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('predictionForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            document.getElementById('loading').style.display = 'block';
+            const resultEl = document.getElementById('resultContainer');
+            resultEl.style.display = 'none';
+
+            const formData = new FormData(this);
+            const data = {};
+            formData.forEach((value, key) => { data[key] = value; });
+
+            try {
+                const response = await fetch('/predict', {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data)
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    document.getElementById('resultTitle').textContent = result.result;
+                    document.getElementById('confidence').textContent = `${result.confidence}%`;
+                    document.getElementById('recommendation').textContent = result.recommendation;
+
+                    const badge = document.getElementById('resultBadge');
+                    badge.textContent = result.prediction === 1 ? 'CKD' : 'No CKD';
+                    badge.className = 'badge ' + (result.prediction === 1 ? 'negative' : 'positive');
+
+                    const bar = document.getElementById('confidenceBar');
+                    bar.style.width = Math.max(1, Math.min(100, result.confidence)) + '%';
+
+                    // Display feature contributions if available
+                    const explainabilityEl = document.getElementById('explainability');
+                    const featureListEl = document.getElementById('featureList');
+                    if (result.feature_contributions && result.feature_contributions.length > 0) {
+                        featureListEl.innerHTML = '';
+                        
+                        // Find max absolute contribution for scaling
+                        const maxContrib = Math.max(...result.feature_contributions.map(f => Math.abs(f.contribution)));
+                        
+                        result.feature_contributions.forEach(feature => {
+                            const isPositive = feature.contribution > 0;
+                            const absContrib = Math.abs(feature.contribution);
+                            const percentage = (absContrib / maxContrib) * 100;
+                            
+                            const item = document.createElement('div');
+                            item.className = 'feature-item';
+                            
+                            // Format value display
+                            let valueDisplay = feature.value;
+                            if (feature.feature === 'rbc' || feature.feature === 'pc' || feature.feature === 'pcc' || 
+                                feature.feature === 'ba' || feature.feature === 'htn' || feature.feature === 'dm' || 
+                                feature.feature === 'cad' || feature.feature === 'pe' || feature.feature === 'ane' ||
+                                feature.feature === 'appet' || feature.feature === 'al' || feature.feature === 'su') {
+                                valueDisplay = feature.value === 0 ? 'No/Normal' : 'Yes/Abnormal';
+                            }
+                            
+                            item.innerHTML = `
+                                <div class="feature-name">${feature.display_name}</div>
+                                <div class="feature-value">${valueDisplay}</div>
+                                <div class="feature-contribution">
+                                    <div class="contribution-bar">
+                                        <div class="contribution-fill ${isPositive ? 'positive' : 'negative'}" 
+                                             style="width: ${percentage}%"></div>
+                                    </div>
+                                    <div class="contribution-value ${isPositive ? 'positive' : 'negative'}">
+                                        ${isPositive ? '+' : ''}${feature.contribution.toFixed(4)}
+                                    </div>
+                                </div>
+                            `;
+                            featureListEl.appendChild(item);
+                        });
+                        
+                        explainabilityEl.style.display = 'block';
+                    } else {
+                        explainabilityEl.style.display = 'none';
+                    }
+
+                    resultEl.style.display = 'block';
+                } else {
+                    alert('Error: ' + result.error);
+                }
+            } catch (error) {
+                alert('Error: ' + error.message);
+            } finally {
+                document.getElementById('loading').style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
